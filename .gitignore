@@ -39,3 +39,8 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+hostinger_build
+hostinger_build.zip
+scratch/
+prisma/*.db

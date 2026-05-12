@@ -1,0 +1,154 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  super_admin
+  leadership
+  regional_coordinator
+  field_missionary
+  prayer_partner
+  donor_partner
+}
+
+enum UserStatus {
+  pending
+  approved
+  rejected
+  inactive
+}
+
+model User {
+  id                    String    @id @default(uuid())
+  email                 String    @unique
+  passwordHash          String
+  fullName              String
+  role                  UserRole  @default(prayer_partner)
+  status                UserStatus @default(pending)
+  regionId              String?
+  organizationPosition  String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  region                Region?   @relation(fields: [regionId], references: [id])
+  reports               FieldReport[]
+  prayerUpdates         PrayerUpdate[]
+  uploadedResources     Resource[]
+  createdAnnouncements  Announcement[]
+  sentMessages          ChatMessage[] @relation("SentMessages")
+  receivedMessages      ChatMessage[] @relation("ReceivedMessages")
+  auditLogs             AuditLog[]
+}
+
+model Region {
+  id                String    @id @default(uuid())
+  name              String
+  safeDisplayName   String
+  sensitivityLevel  String    // low, medium, high, restricted
+  createdAt         DateTime  @default(now())
+
+  users             User[]
+  reports           FieldReport[]
+  prayerUpdates     PrayerUpdate[]
+  resources         Resource[]
+  announcements     Announcement[]
+}
+
+model FieldReport {
+  id                  String    @id @default(uuid())
+  title                  String
+  content                String
+  sanitizedSummary    String
+  authorId            String
+  regionId            String?
+  status              String    @default("submitted") // draft, submitted, under_review, approved_internal, approved_public, rejected
+  sensitivityLevel    String    @default("high")      // low, medium, high, restricted
+  containsNames       Boolean   @default(false)
+  containsLocations   Boolean   @default(false)
+  containsFaces       Boolean   @default(false)
+  containsTravel      Boolean   @default(false)
+  reviewerId          String?
+  reviewNotes         String?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  author              User      @relation(fields: [authorId], references: [id])
+  region              Region?   @relation(fields: [regionId], references: [id])
+}
+
+model PrayerUpdate {
+  id                String    @id @default(uuid())
+  title              String
+  content            String
+  sanitizedContent   String
+  authorId           String
+  regionId           String?
+  visibility         String    @default("internal") // internal, prayer_partners, donor_partners, public_safe
+  status             String    @default("draft")    // draft, submitted, approved, rejected
+  sensitivityLevel   String
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  author             User      @relation(fields: [authorId], references: [id])
+  region             Region?   @relation(fields: [regionId], references: [id])
+}
+
+model Resource {
+  id              String    @id @default(uuid())
+  title           String
+  description     String
+  fileUrl         String?
+  content         String?
+  category        String    // training, operations, general
+  visibilityRole  String    @default("leadership")
+  regionId        String?
+  uploadedById    String
+  createdAt       DateTime  @default(now())
+
+  uploadedBy      User      @relation(fields: [uploadedById], references: [id])
+  region          Region?   @relation(fields: [regionId], references: [id])
+}
+
+model Announcement {
+  id              String    @id @default(uuid())
+  title           String
+  body            String
+  visibilityRole  String    @default("leadership")
+  regionId        String?
+  createdById     String
+  createdAt       DateTime  @default(now())
+
+  createdBy       User      @relation(fields: [createdById], references: [id])
+  region          Region?   @relation(fields: [regionId], references: [id])
+}
+
+model ChatMessage {
+  id          String    @id @default(uuid())
+  content     String
+  senderId    String
+  receiverId  String?   // If null, it's a broadcast or group message
+  createdAt   DateTime  @default(now())
+
+  sender      User      @relation("SentMessages", fields: [senderId], references: [id])
+  receiver    User?     @relation("ReceivedMessages", fields: [receiverId], references: [id])
+}
+
+model AuditLog {
+  id          String    @id @default(uuid())
+  userId      String
+  action      String
+  entityType  String
+  entityId    String?
+  metadata    Json?
+  createdAt   DateTime  @default(now())
+
+  user        User      @relation(fields: [userId], references: [id])
+}
