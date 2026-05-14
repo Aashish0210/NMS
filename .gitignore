@@ -44,3 +44,5 @@ hostinger_build
 hostinger_build.zip
 scratch/
 prisma/*.db
+.vercel
+.env*.local
